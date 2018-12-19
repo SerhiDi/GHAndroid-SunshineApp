@@ -1,25 +1,13 @@
-/*
- * Copyright (C) 2017 The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package com.example.android.sunshine.data.network;
 
+import android.arch.lifecycle.LiveData;
+import android.arch.lifecycle.MutableLiveData;
 import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
 import com.example.android.sunshine.AppExecutors;
+import com.example.android.sunshine.data.database.WeatherEntry;
 import com.firebase.jobdispatcher.Constraint;
 import com.firebase.jobdispatcher.Driver;
 import com.firebase.jobdispatcher.FirebaseJobDispatcher;
@@ -51,11 +39,14 @@ public class WeatherNetworkDataSource {
     private static WeatherNetworkDataSource sInstance;
     private final Context mContext;
 
+    // LiveData storing the latest downloaded weather forecasts
+    private final MutableLiveData<WeatherEntry[]> mDownloadedWeatherForecasts;
     private final AppExecutors mExecutors;
 
     private WeatherNetworkDataSource(Context context, AppExecutors executors) {
         mContext = context;
         mExecutors = executors;
+        mDownloadedWeatherForecasts = new MutableLiveData<WeatherEntry[]>();
     }
 
     /**
@@ -70,6 +61,10 @@ public class WeatherNetworkDataSource {
             }
         }
         return sInstance;
+    }
+
+    public LiveData<WeatherEntry[]> getCurrentWeatherForecasts() {
+        return mDownloadedWeatherForecasts;
     }
 
     /**
@@ -165,8 +160,11 @@ public class WeatherNetworkDataSource {
                             response.getWeatherForecast()[0].getMin(),
                             response.getWeatherForecast()[0].getMax()));
 
-                    // TODO Finish this method when instructed.
-                    // Will eventually do something with the downloaded data
+                    // When you are off of the main thread and want to update LiveData, use postValue.
+                    // It posts the update to the main thread.
+                    mDownloadedWeatherForecasts.postValue(response.getWeatherForecast());
+
+                    // If the code reaches this point, we have successfully performed our sync
                 }
             } catch (Exception e) {
                 // Server probably invalid
